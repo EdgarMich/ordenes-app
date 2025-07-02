@@ -152,6 +152,8 @@ if submitted:
         st.cache_data.clear()
         st.experimental_rerun()
 
+st.write("Reached Admin Panel section")
+
 st.markdown("---")
 st.header("🛠️ Admin Panel - Edit or Delete Orders")
 
