@@ -137,7 +137,7 @@ if submitted:
         st.cache_data.clear()  # Clear Excel cache
         st.rerun()  # Reload app and data
 
-=======
+
 # Test
 
 import time
