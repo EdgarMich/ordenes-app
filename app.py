@@ -179,11 +179,11 @@ if prioridad:
 if persona:
     filtered_df = filtered_df[filtered_df["Requerido por"].isin(persona)]
 
-# Format date columns to only show date (not time)
+# Format date columns to strings like 'YYYY-MM-DD' to remove time display
 date_cols = ["Fecha requerida", "Fecha deseada", "Fecha completada"]
 for col in date_cols:
     if col in filtered_df.columns:
-        filtered_df[col] = pd.to_datetime(filtered_df[col]).dt.date
+        filtered_df[col] = pd.to_datetime(filtered_df[col], errors='coerce').dt.strftime('%Y-%m-%d')
 
 st.dataframe(filtered_df, use_container_width=True)
 
