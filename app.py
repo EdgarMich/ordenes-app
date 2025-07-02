@@ -2,7 +2,15 @@ import time
 import streamlit as st
 import pandas as pd
 import re
-from datetime import date
+from datetime import date, datetime
+
+# Helper for safe date conversion for date_input default values
+def safe_date(val):
+    if pd.isna(val):
+        return date.today()
+    if isinstance(val, (datetime, pd.Timestamp)):
+        return val.date()
+    return val  # fallback if already a date
 
 # Load Excel with caching
 @st.cache_data
@@ -37,7 +45,7 @@ if prioridad:
 if persona:
     filtered_df = filtered_df[filtered_df["Requerido por"].isin(persona)]
 
-# Create a display copy to format dates as strings (YYYY-MM-DD)
+# Prepare display DataFrame with formatted dates (YYYY-MM-DD)
 display_df = filtered_df.copy()
 date_cols = ["Fecha requerida", "Fecha deseada", "Fecha completada"]
 for col in date_cols:
@@ -135,14 +143,15 @@ if submitted:
         new_row_df = pd.DataFrame([new_order])
         df = pd.concat([df, new_row_df], ignore_index=True)
 
-        # Save back to Excel
-        with pd.ExcelWriter("ordenes.xlsx", engine="openpyxl", mode="a", if_sheet_exists="overlay") as writer:
+        # Save back to Excel - overwrite whole sheet to avoid duplicates or conflicts
+        with pd.ExcelWriter("ordenes.xlsx", engine="openpyxl", mode="w") as writer:
             df.to_excel(writer, sheet_name="Bitácora", index=False, startrow=1)
 
         st.success(f"✅ Orden '{new_no_orden}' guardada correctamente!")
         time.sleep(2)
         st.cache_data.clear()
         st.experimental_rerun()
+
 st.markdown("---")
 st.header("🛠️ Admin Panel - Edit or Delete Orders")
 
@@ -152,22 +161,29 @@ order_to_edit = st.selectbox("Selecciona una Orden para editar o borrar", option
 if order_to_edit:
     order_data = df[df["No. de Orden"] == order_to_edit].iloc[0]
 
-    # Editable fields
     with st.form("edit_order_form"):
-        status_edit = st.selectbox("Status", options=["Pendiente", "En proceso", "Completado"], index=["Pendiente", "En proceso", "Completado"].index(order_data["Status"]) if order_data["Status"] in ["Pendiente", "En proceso", "Completado"] else 0)
-        fecha_completada_edit = st.date_input("Fecha completada", value=order_data["Fecha completada"] if pd.notna(order_data["Fecha completada"]) else date.today())
-        notas_edit = st.text_area("Notas / Comentarios", value=order_data["Notas / Comentarios"] if pd.notna(order_data["Notas / Comentarios"]) else "")
+        status_edit = st.selectbox(
+            "Status",
+            options=["Pendiente", "En proceso", "Completado"],
+            index=["Pendiente", "En proceso", "Completado"].index(order_data["Status"]) if order_data["Status"] in ["Pendiente", "En proceso", "Completado"] else 0
+        )
+        fecha_completada_edit = st.date_input(
+            "Fecha completada",
+            value=safe_date(order_data["Fecha completada"])
+        )
+        notas_edit = st.text_area(
+            "Notas / Comentarios",
+            value=order_data["Notas / Comentarios"] if pd.notna(order_data["Notas / Comentarios"]) else ""
+        )
 
         save_changes = st.form_submit_button("Guardar Cambios")
         delete_order = st.form_submit_button("Borrar Orden")
 
     if save_changes:
-        # Update the dataframe
         df.loc[df["No. de Orden"] == order_to_edit, "Status"] = status_edit
         df.loc[df["No. de Orden"] == order_to_edit, "Fecha completada"] = fecha_completada_edit
         df.loc[df["No. de Orden"] == order_to_edit, "Notas / Comentarios"] = notas_edit
 
-        # Save to Excel
         with pd.ExcelWriter("ordenes.xlsx", engine="openpyxl", mode="w") as writer:
             df.to_excel(writer, sheet_name="Bitácora", index=False, startrow=1)
 
@@ -175,12 +191,11 @@ if order_to_edit:
         st.experimental_rerun()
 
     if delete_order:
-        # Remove from dataframe
         df = df[df["No. de Orden"] != order_to_edit]
 
-        # Save to Excel
         with pd.ExcelWriter("ordenes.xlsx", engine="openpyxl", mode="w") as writer:
             df.to_excel(writer, sheet_name="Bitácora", index=False, startrow=1)
 
         st.success(f"✅ Orden '{order_to_edit}' borrada correctamente!")
         st.experimental_rerun()
+
