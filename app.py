@@ -143,3 +143,44 @@ if submitted:
         time.sleep(2)
         st.cache_data.clear()
         st.experimental_rerun()
+st.markdown("---")
+st.header("🛠️ Admin Panel - Edit or Delete Orders")
+
+# Select order to edit/delete
+order_to_edit = st.selectbox("Selecciona una Orden para editar o borrar", options=df["No. de Orden"].tolist())
+
+if order_to_edit:
+    order_data = df[df["No. de Orden"] == order_to_edit].iloc[0]
+
+    # Editable fields
+    with st.form("edit_order_form"):
+        status_edit = st.selectbox("Status", options=["Pendiente", "En proceso", "Completado"], index=["Pendiente", "En proceso", "Completado"].index(order_data["Status"]) if order_data["Status"] in ["Pendiente", "En proceso", "Completado"] else 0)
+        fecha_completada_edit = st.date_input("Fecha completada", value=order_data["Fecha completada"] if pd.notna(order_data["Fecha completada"]) else date.today())
+        notas_edit = st.text_area("Notas / Comentarios", value=order_data["Notas / Comentarios"] if pd.notna(order_data["Notas / Comentarios"]) else "")
+
+        save_changes = st.form_submit_button("Guardar Cambios")
+        delete_order = st.form_submit_button("Borrar Orden")
+
+    if save_changes:
+        # Update the dataframe
+        df.loc[df["No. de Orden"] == order_to_edit, "Status"] = status_edit
+        df.loc[df["No. de Orden"] == order_to_edit, "Fecha completada"] = fecha_completada_edit
+        df.loc[df["No. de Orden"] == order_to_edit, "Notas / Comentarios"] = notas_edit
+
+        # Save to Excel
+        with pd.ExcelWriter("ordenes.xlsx", engine="openpyxl", mode="w") as writer:
+            df.to_excel(writer, sheet_name="Bitácora", index=False, startrow=1)
+
+        st.success(f"✅ Orden '{order_to_edit}' actualizada correctamente!")
+        st.experimental_rerun()
+
+    if delete_order:
+        # Remove from dataframe
+        df = df[df["No. de Orden"] != order_to_edit]
+
+        # Save to Excel
+        with pd.ExcelWriter("ordenes.xlsx", engine="openpyxl", mode="w") as writer:
+            df.to_excel(writer, sheet_name="Bitácora", index=False, startrow=1)
+
+        st.success(f"✅ Orden '{order_to_edit}' borrada correctamente!")
+        st.experimental_rerun()
