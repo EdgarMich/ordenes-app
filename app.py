@@ -151,6 +151,12 @@ from datetime import date
 def load_data():
     df = pd.read_excel("ordenes.xlsx", sheet_name="Bitácora", header=1)
     df = df.dropna(subset=["No. de Orden"])
+
+    # Format date columns to remove time
+    date_columns = ["Fecha requerida", "Fecha deseada", "Fecha completada"]
+    for col in date_columns:
+        if col in df.columns:
+            df[col] = pd.to_datetime(df[col], errors='coerce').dt.date
     return df
 
 df = load_data()
